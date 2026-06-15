@@ -1,0 +1,62 @@
+package view;
+
+import controller.SistemaController;
+import repository.CidadeRepository;
+import repository.EletropostoRepository;
+import repository.VeiculoRepository;
+import model.Cidade;
+import model.Eletroposto;
+import model.VeiculoEletrico;
+import java.util.Scanner;
+
+public class SistemaView {
+    private SistemaController controller;
+    private VeiculoRepository veiculoRepo;
+    private CidadeRepository cidadeRepo;
+    private EletropostoRepository eletropostoRepo;
+    
+    private int idVeiculoSequencial = 1;
+    private int idCidadeSequencial = 1;
+    private int idEletropostoSequencial = 1;
+
+    public SistemaView(SistemaController controller, VeiculoRepository veiculoRepo, CidadeRepository cidadeRepo, EletropostoRepository eletropostoRepo) {
+        this.controller = controller;
+        this.veiculoRepo = veiculoRepo;
+        this.cidadeRepo = cidadeRepo;
+        this.eletropostoRepo = eletropostoRepo;
+    }
+
+    public void exibirMenuPrincipal() {
+        Scanner scanner = new Scanner(System.in);
+        int opcaoPrincipal = -1;
+
+        cidadeRepo.cadastrar(new Cidade(idCidadeSequencial++, "Campinas", "SP", 100.0));
+        veiculoRepo.casdastrar(new VeiculoEletrico(idVeiculoSequencial++, "BYD Dolphin", 400.0, 50.0, "CCS2", 45, 0.15, 420));
+        eletropostoRepo.cadastrar(new Eletroposto(idEletropostoSequencial++, "Posto Graal", "Rod. Bandeirantes KM 120", 1, "CCS2", 150.0, 2.10, 4));
+
+        while (opcaoPrincipal != 0) {
+          System.out.println("\n--- GREENROUTE - MENU PRINCIPAL ---");
+            System.out.println("1. Gerenciar Veículos");
+            System.out.println("4. Simular Rota Intermunicipal");
+            System.out.println("0. Sair");
+            System.out.print("Escolha uma opção: ");
+            
+            opcaoPrincipal = Integer.parseInt(scanner.nextLine());
+
+            switch (opcaoPrincipal) {
+                case 1: break;
+                case 4:
+                    System.out.print("ID do Veículo: ");
+                    int vId = Integer.parseInt(scanner.nextLine());
+                    System.out.print("ID da Cidade: ");
+                    int cId = Integer.parseInt(scanner.nextLine());
+                    controller.simularRota(vId, cId);
+                    break;
+                case 0:
+                    System.out.println("Encerrando...");
+                    break;
+            }
+        }
+        scanner.close();
+    }
+}

@@ -1,7 +1,5 @@
 package repository;
-
 import model.Cidade;
-
 public class CidadeRepository {
     private Cidade[] cidades = new Cidade[5];
     private int quantidadeAtual = 0;

@@ -2,46 +2,32 @@ package repository;
 
 import model.Veiculo;
 
+import java.util.ArrayList;
+
 public class VeiculoRepository {
-    private Veiculo[] veiculos = new Veiculo[5];
-    private int quantidadeAtual = 0;
+    private ArrayList<Veiculo> veiculos = new ArrayList<>();
 
     public void cadastrar(Veiculo veiculo){
-        if (quantidadeAtual == veiculos.length){
-            expandirArray();
-        }
-        veiculos[quantidadeAtual] = veiculo;
-        quantidadeAtual++;
-    }
-    private void expandirArray(){
-        Veiculo[] novoArray = new Veiculo[veiculos.length * 2];
-        for (int i = 0; i < veiculos.length; i++){
-            novoArray[i] = veiculos[i];
-        }
-        veiculos = novoArray;
+        veiculos.add(veiculo);
     }
 
     public Veiculo buscarPorId(int id){
-        for (int i = 0; i < quantidadeAtual; i++){
-            if (veiculos[i].getId() == id){
-                return veiculos[i];
+        for (int i = 0; i < veiculos.size(); i++){
+            if (veiculos.get(i).getId() == id){
+                return veiculos.get(i);
             }
         }
         return null;
     }
 
-    public Veiculo[] listarTodos(){
-        Veiculo[] listaLimpa = new Veiculo[quantidadeAtual];
-        for (int i = 0; i < quantidadeAtual; i++){
-            listaLimpa[i] = veiculos[i];
-        }
-        return listaLimpa;
+    public ArrayList<Veiculo> listarTodos(){
+        return new ArrayList<>(veiculos);
     }
 
     public boolean atualizar(Veiculo veiculoAtualizado) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (veiculos[i].getId() == veiculoAtualizado.getId()) {
-                veiculos[i] = veiculoAtualizado;
+        for (int i = 0; i < veiculos.size(); i++) {
+            if (veiculos.get(i).getId() == veiculoAtualizado.getId()) {
+                veiculos.set(i, veiculoAtualizado);
                 return true;
             }
         }
@@ -49,13 +35,9 @@ public class VeiculoRepository {
     }
 
     public boolean excluir(int id){
-        for (int i = 0; i <  quantidadeAtual; i++){
-            if (veiculos[i].getId() == id){
-                for (int j = i; j < quantidadeAtual - 1; j++){
-                    veiculos[j] = veiculos[j + 1];
-                }
-                veiculos[quantidadeAtual - 1] = null;
-                quantidadeAtual--;
+        for (int i = 0; i < veiculos.size(); i++){
+            if (veiculos.get(i).getId() == id){
+                veiculos.remove(i);
                 return true;
             }
         }

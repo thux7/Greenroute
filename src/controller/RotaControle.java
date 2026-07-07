@@ -7,6 +7,8 @@ import repository.CidadeRepository;
 import repository.EletropostoRepository;
 import repository.VeiculoRepository;
 
+import java.util.ArrayList;
+
 public class RotaControle {
 
     private VeiculoRepository veiculoRepo;
@@ -44,14 +46,14 @@ public class RotaControle {
     }
 
     private void sugerirEletropostos(int cidadeId){
-        Eletroposto[] todosEletropostos = eletropostoRepo.listarTodos();
+        ArrayList<Eletroposto> todosEletropostos = eletropostoRepo.listarTodos();
         boolean encontrou = false;
 
-        for(int i =0; i < todosEletropostos.length; i++){
-            if(todosEletropostos[i] != null && todosEletropostos[i].getCidadeId() == cidadeId){
-                System.out.println("- " + todosEletropostos[i].getNome() +
-                        " | local: " + todosEletropostos[i].getLocalizacao() +
-                        " | Conectores: " + todosEletropostos[i].getTiposConectoresDisponiveis());
+        for(int i =0; i < todosEletropostos.size(); i++){
+            if(todosEletropostos.get(i).getCidadeId() == cidadeId){
+                System.out.println("- " + todosEletropostos.get(i).getNome() +
+                        " | local: " + todosEletropostos.get(i).getLocalizacao() +
+                        " | Conectores: " + todosEletropostos.get(i).getTiposConectoresDisponiveis());
                 encontrou = true;
             }
         }

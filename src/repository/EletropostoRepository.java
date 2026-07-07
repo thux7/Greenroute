@@ -2,47 +2,32 @@ package repository;
 
 import model.Eletroposto;
 
+import java.util.ArrayList;
+
 public class EletropostoRepository {
-    private Eletroposto[] eletropostos = new Eletroposto[5];
-    private int quantidadeAtual = 0;
+    private ArrayList<Eletroposto> eletropostos = new ArrayList<>();
 
     public void cadastrar(Eletroposto eletroposto) {
-        if (quantidadeAtual == eletropostos.length) {
-            expandirArray();
-        }
-        eletropostos[quantidadeAtual] = eletroposto;
-        quantidadeAtual++;
-    }
-
-    private void expandirArray() {
-        Eletroposto[] novoArray = new Eletroposto[eletropostos.length * 2];
-        for (int i = 0; i < eletropostos.length; i++) {
-            novoArray[i] = eletropostos[i];
-        }
-        eletropostos = novoArray;
+        eletropostos.add(eletroposto);
     }
 
     public Eletroposto buscarPorId(int id) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (eletropostos[i].getId() == id) {
-                return eletropostos[i];
+        for (int i = 0; i < eletropostos.size(); i++) {
+            if (eletropostos.get(i).getId() == id) {
+                return eletropostos.get(i);
             }
         }
         return null;
     }
 
-    public Eletroposto[] listarTodos() {
-        Eletroposto[] listaLimpa = new Eletroposto[quantidadeAtual];
-        for (int i = 0; i < quantidadeAtual; i++) {
-            listaLimpa[i] = eletropostos[i];
-        }
-        return listaLimpa;
+    public ArrayList<Eletroposto> listarTodos() {
+        return new ArrayList<>(eletropostos);
     }
 
     public boolean atualizar(Eletroposto eletropostoAtualizado) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (eletropostos[i].getId() == eletropostoAtualizado.getId()) {
-                eletropostos[i] = eletropostoAtualizado;
+        for (int i = 0; i < eletropostos.size(); i++) {
+            if (eletropostos.get(i).getId() == eletropostoAtualizado.getId()) {
+                eletropostos.set(i, eletropostoAtualizado);
                 return true;
             }
         }
@@ -50,31 +35,20 @@ public class EletropostoRepository {
     }
 
     public boolean excluir(int id) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (eletropostos[i].getId() == id) {
-                for (int j = i; j < quantidadeAtual - 1; j++) {
-                    eletropostos[j] = eletropostos[j + 1];
-                }
-                eletropostos[quantidadeAtual - 1] = null;
-                quantidadeAtual--;
+        for (int i = 0; i < eletropostos.size(); i++) {
+            if (eletropostos.get(i).getId() == id) {
+                eletropostos.remove(i);
                 return true;
             }
         }
         return false;
     }
 
-    public Eletroposto[] buscarPorCidade(int cidadeId) {
-        int contador = 0;
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (eletropostos[i].getCidadeId() == cidadeId) {
-                contador++;
-            }
-        }
-        Eletroposto[] resultado = new Eletroposto[contador];
-        int index = 0;
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (eletropostos[i].getCidadeId() == cidadeId) {
-                resultado[index++] = eletropostos[i];
+    public ArrayList<Eletroposto> buscarPorCidade(int cidadeId) {
+        ArrayList<Eletroposto> resultado = new ArrayList<>();
+        for (int i = 0; i < eletropostos.size(); i++) {
+            if (eletropostos.get(i).getCidadeId() == cidadeId) {
+                resultado.add(eletropostos.get(i));
             }
         }
         return resultado;

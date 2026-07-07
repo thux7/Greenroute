@@ -1,46 +1,32 @@
 package repository;
 import model.Cidade;
+
+import java.util.ArrayList;
+
 public class CidadeRepository {
-    private Cidade[] cidades = new Cidade[5];
-    private int quantidadeAtual = 0;
+    private ArrayList<Cidade> cidades = new ArrayList<>();
 
     public void cadastrar(Cidade cidade) {
-        if (quantidadeAtual == cidades.length) {
-            expandirArray();
-        }
-        cidades[quantidadeAtual] = cidade;
-        quantidadeAtual++;
-    }
-
-    private void expandirArray() {
-        Cidade[] novoArray = new Cidade[cidades.length * 2];
-        for (int i = 0; i < cidades.length; i++) {
-            novoArray[i] = cidades[i];
-        }
-        cidades = novoArray;
+        cidades.add(cidade);
     }
 
     public Cidade buscarPorId(int id) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (cidades[i].getId() == id) {
-                return cidades[i];
+        for (int i = 0; i < cidades.size(); i++) {
+            if (cidades.get(i).getId() == id) {
+                return cidades.get(i);
             }
         }
         return null;
     }
 
-    public Cidade[] listarTodos() {
-        Cidade[] listaLimpa = new Cidade[quantidadeAtual];
-        for (int i = 0; i < quantidadeAtual; i++) {
-            listaLimpa[i] = cidades[i];
-        }
-        return listaLimpa;
+    public ArrayList<Cidade> listarTodos() {
+        return new ArrayList<>(cidades);
     }
 
     public boolean atualizar(Cidade cidadeAtualizada) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (cidades[i].getId() == cidadeAtualizada.getId()) {
-                cidades[i] = cidadeAtualizada;
+        for (int i = 0; i < cidades.size(); i++) {
+            if (cidades.get(i).getId() == cidadeAtualizada.getId()) {
+                cidades.set(i, cidadeAtualizada);
                 return true;
             }
         }
@@ -48,13 +34,9 @@ public class CidadeRepository {
     }
 
     public boolean excluir(int id) {
-        for (int i = 0; i < quantidadeAtual; i++) {
-            if (cidades[i].getId() == id) {
-                for (int j = i; j < quantidadeAtual - 1; j++) {
-                    cidades[j] = cidades[j + 1];
-                }
-                cidades[quantidadeAtual - 1] = null;
-                quantidadeAtual--;
+        for (int i = 0; i < cidades.size(); i++) {
+            if (cidades.get(i).getId() == id) {
+                cidades.remove(i);
                 return true;
             }
         }

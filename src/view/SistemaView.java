@@ -10,6 +10,7 @@ import repository.CidadeRepository;
 import repository.EletropostoRepository;
 import repository.VeiculoRepository;
 
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class SistemaView {
@@ -151,8 +152,8 @@ public class SistemaView {
                     break;
 
                 case 3: // Listar
-                    Veiculo[] frota = veiculoRepo.listarTodos();
-                    if (frota.length == 0) {
+                    ArrayList<Veiculo> frota = veiculoRepo.listarTodos();
+                    if (frota.isEmpty()) {
                         System.out.println("Nenhum veículo cadastrado na frota.");
                     } else {
                         System.out.println("\n--- FROTA REGISTRADA ---");
@@ -232,8 +233,8 @@ public class SistemaView {
                     break;
 
                 case 2:
-                    Cidade[] cidades = cidadeRepo.listarTodos();
-                    if (cidades.length == 0) {
+                    ArrayList<Cidade> cidades = cidadeRepo.listarTodos();
+                    if (cidades.isEmpty()) {
                         System.out.println("Nenhuma cidade cadastrada.");
                     } else {
                         System.out.println("\n--- MALHA DE CIDADES ---");
@@ -322,8 +323,8 @@ public class SistemaView {
                     break;
 
                 case 2:
-                    Eletroposto[] postos = eletropostoRepo.listarTodos();
-                    if (postos.length == 0) {
+                    ArrayList<Eletroposto> postos = eletropostoRepo.listarTodos();
+                    if (postos.isEmpty()) {
                         System.out.println("Nenhum eletroposto registrado.");
                     } else {
                         System.out.println("\n--- REDE DE INFRAESTRUTURA DE RECARGA ---");

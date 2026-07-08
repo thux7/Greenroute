@@ -1,32 +1,28 @@
-import controller.RotaControle;
-import repository.CidadeRepository;
-import repository.EletropostoRepository;
-import repository.VeiculoRepository;
-import view.SistemaView;
+import controller.*;
+import repository.*;
+import service.GeminiPlannerService;
+import service.IAPlannerService;
+import view.*;
 
 public class Main {
-
     public static void main(String[] args) {
+        VehicleRepository vehicleRepo = new VehicleRepository();
+        CityRepository cityRepo = new CityRepository();
+        ChargingStationRepository stationRepo = new ChargingStationRepository();
 
-        VeiculoRepository veiculoRepo = new VeiculoRepository();
-        CidadeRepository cidadeRepo = new CidadeRepository();
-        EletropostoRepository eletropostoRepo = new EletropostoRepository();
+        VehicleController vehicleController = new VehicleController(vehicleRepo);
+        CityController cityController = new CityController(cityRepo);
+        ChargingStationController stationController = new ChargingStationController(stationRepo);
 
-        RotaControle controller =
-                new RotaControle(
-                        veiculoRepo,
-                        cidadeRepo,
-                        eletropostoRepo
-                );
+        IAPlannerService planner = new GeminiPlannerService();
 
-        SistemaView view =
-                new SistemaView(
-                        controller,
-                        veiculoRepo,
-                        cidadeRepo,
-                        eletropostoRepo
-                );
+        RouteController routeController = new RouteController(vehicleController, cityController, stationController, planner);
 
-        view.exibirMenuPrincipal();
+        VehicleView vehicleView = new VehicleView(vehicleController, planner);
+        CityView cityView = new CityView(cityController);
+        ChargingStationView stationView = new ChargingStationView(stationController, cityController);
+        RouteView routeView = new RouteView(routeController, vehicleController, cityController);
+
+        new MainView(vehicleView, cityView, stationView, routeView);
     }
 }

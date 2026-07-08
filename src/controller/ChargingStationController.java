@@ -14,8 +14,27 @@ public class ChargingStationController {
         this.repository = repository;
     }
 
+    private void validateStation(String name, String location, int cityId,
+                                 String connectors, double power, double price, int slots) {
+        if (name == null || name.trim().isEmpty())
+            throw new IllegalArgumentException("Nome da estação é obrigatório.");
+        if (location == null || location.trim().isEmpty())
+            throw new IllegalArgumentException("Localização é obrigatória.");
+        if (cityId <= 0)
+            throw new IllegalArgumentException("ID da cidade inválido.");
+        if (connectors == null || connectors.trim().isEmpty())
+            throw new IllegalArgumentException("Pelo menos um tipo de conector deve ser informado.");
+        if (power <= 0)
+            throw new IllegalArgumentException("Potência de carga deve ser maior que zero.");
+        if (price < 0)
+            throw new IllegalArgumentException("Preço por kWh não pode ser negativo.");
+        if (slots < 0)
+            throw new IllegalArgumentException("Número de vagas não pode ser negativo.");
+    }
+
     public void registerStation(String name, String location, int cityId,
                                 String connectors, double power, double price, int slots) {
+        validateStation(name, location, cityId, connectors, power, price, slots);
         ChargingStation cs = new ChargingStation(nextId++, name, location, cityId,
                 connectors, power, price, slots);
         repository.register(cs);
@@ -34,6 +53,7 @@ public class ChargingStationController {
     public void updateStationFull(int id, String name, String location, int cityId,
                                   String connectors, double power, double price, int slots) throws EntidadeNaoEncontradaException {
         ChargingStation cs = findById(id);
+        validateStation(name, location, cityId, connectors, power, price, slots);
         cs.setName(name);
         cs.setLocation(location);
         cs.setCityId(cityId);
@@ -46,6 +66,8 @@ public class ChargingStationController {
 
     public void updateStation(int id, String newName) throws EntidadeNaoEncontradaException {
         ChargingStation cs = findById(id);
+        if (newName == null || newName.trim().isEmpty())
+            throw new IllegalArgumentException("Nome da estação é obrigatório.");
         cs.setName(newName);
         repository.update(cs);
     }

@@ -69,35 +69,45 @@ public class GeminiPlannerService implements IAPlannerService {
         double fuelTank = parseDouble(parts[7]);
         double combustionRange = parseDouble(parts[8]);
         double fuelConsumption = parseDouble(parts[9]);
+
+        if (batteryKwh < 0) batteryKwh = 0;
+        if (electricRange < 0) electricRange = 0;
+        if (fuelTank < 0) fuelTank = 0;
+        if (combustionRange < 0) combustionRange = 0;
+        if (fuelConsumption < 0) fuelConsumption = 0;
+        if (acChargeTime < 0) acChargeTime = 0;
+        if (dcFastCharge < 0) dcFastCharge = 0;
+
         double batteryPercent = extractBatteryPercentage(freeText);
-        if (batteryPercent == 0.0) batteryPercent = 100.0; // fallback
+        if (batteryPercent <= 0 || batteryPercent > 100) batteryPercent = 100.0; // fallback
 
         boolean isElectric = isElectricVehicle(fuelType, fuelTank, combustionRange);
         double electricConsumption = (electricRange > 0 && batteryKwh > 0) ? batteryKwh / electricRange : 0.15;
         electricConsumption = Math.round(electricConsumption * 10000.0) / 10000.0;
+        if (electricConsumption <= 0) electricConsumption = 0.15; // fallback
 
         if (isElectric) {
             return new ElectricVehicle(
                     0,
-                    model,
-                    electricRange,
+                    model.isEmpty() ? "Desconhecido" : model,
+                    electricRange > 0 ? electricRange : 100.0,
                     batteryPercent,
-                    connector,
-                    dcFastCharge,
+                    connector.isEmpty() ? "CCS2" : connector,
+                    dcFastCharge > 0 ? dcFastCharge : 30,
                     electricConsumption,
-                    acChargeTime
+                    acChargeTime > 0 ? acChargeTime : 60
             );
         } else {
             return new HybridVehicle(
                     0,
-                    model,
-                    electricRange,
+                    model.isEmpty() ? "Desconhecido" : model,
+                    electricRange > 0 ? electricRange : 50.0,
                     batteryPercent,
                     electricConsumption,
-                    acChargeTime,
-                    fuelTank,
-                    fuelConsumption,
-                    fuelType
+                    acChargeTime > 0 ? acChargeTime : 60,
+                    fuelTank > 0 ? fuelTank : 40.0,
+                    fuelConsumption > 0 ? fuelConsumption : 12.0,
+                    fuelType.isEmpty() ? "Gasolina" : fuelType
             );
         }
     }
@@ -106,7 +116,8 @@ public class GeminiPlannerService implements IAPlannerService {
         Pattern p = Pattern.compile("bateria\\s*(?:em|de)?\\s*(\\d+)\\s*%", Pattern.CASE_INSENSITIVE);
         Matcher m = p.matcher(text);
         if (m.find()) {
-            return Double.parseDouble(m.group(1));
+            double val = Double.parseDouble(m.group(1));
+            return Math.min(100, Math.max(0, val)); // Garante entre 0 e 100
         }
         return 0.0;
     }

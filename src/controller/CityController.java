@@ -14,7 +14,17 @@ public class CityController {
         this.repository = repository;
     }
 
+    private void validateCity(String name, String state, double distance) {
+        if (name == null || name.trim().isEmpty())
+            throw new IllegalArgumentException("Nome da cidade é obrigatório.");
+        if (state == null || state.trim().isEmpty())
+            throw new IllegalArgumentException("Estado é obrigatório.");
+        if (distance <= 0)
+            throw new IllegalArgumentException("Distância da capital deve ser maior que zero.");
+    }
+
     public void registerCity(String name, String state, double distance) {
+        validateCity(name, state, distance);
         City city = new City(nextId++, name, state, distance);
         repository.register(city);
     }
@@ -31,6 +41,7 @@ public class CityController {
 
     public void updateCityFull(int id, String name, String state, double distance) throws EntidadeNaoEncontradaException {
         City c = findById(id);
+        validateCity(name, state, distance);
         c.setName(name);
         c.setState(state);
         c.setDistanceFromCapital(distance);
@@ -39,6 +50,8 @@ public class CityController {
 
     public void updateCity(int id, String newName) throws EntidadeNaoEncontradaException {
         City c = findById(id);
+        if (newName == null || newName.trim().isEmpty())
+            throw new IllegalArgumentException("Nome da cidade é obrigatório.");
         c.setName(newName);
         repository.update(c);
     }

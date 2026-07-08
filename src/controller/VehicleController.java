@@ -16,8 +16,41 @@ public class VehicleController {
         this.repository = repository;
     }
 
+    private void validateCommonFields(String model, double maxRange, double battery,
+                                      double consumption, int fullCharge) {
+        if (model == null || model.trim().isEmpty())
+            throw new IllegalArgumentException("Modelo é obrigatório.");
+        if (maxRange <= 0)
+            throw new IllegalArgumentException("Autonomia máxima deve ser maior que zero.");
+        if (battery < 0 || battery > 100)
+            throw new IllegalArgumentException("Bateria atual deve estar entre 0 e 100%.");
+        if (consumption <= 0)
+            throw new IllegalArgumentException("Consumo (kWh/km) deve ser maior que zero.");
+        if (fullCharge <= 0)
+            throw new IllegalArgumentException("Tempo de recarga completa deve ser maior que zero.");
+    }
+
+    private void validateElectricFields(String connector, int fastCharge) {
+        if (connector == null || connector.trim().isEmpty())
+            throw new IllegalArgumentException("Tipo de conector é obrigatório.");
+        if (fastCharge <= 0)
+            throw new IllegalArgumentException("Tempo de recarga rápida deve ser maior que zero.");
+    }
+
+    private void validateHybridFields(double fuelCapacity, double fuelConsumption, String fuelType) {
+        if (fuelCapacity <= 0)
+            throw new IllegalArgumentException("Capacidade do tanque deve ser maior que zero.");
+        if (fuelConsumption <= 0)
+            throw new IllegalArgumentException("Consumo de combustível (km/l) deve ser maior que zero.");
+        if (fuelType == null || fuelType.trim().isEmpty())
+            throw new IllegalArgumentException("Tipo de combustível é obrigatório.");
+    }
+
+
     public void registerElectricVehicle(String model, double maxRange, double battery,
                                         String connector, int fastCharge, double consumption, int fullCharge) {
+        validateCommonFields(model, maxRange, battery, consumption, fullCharge);
+        validateElectricFields(connector, fastCharge);
         ElectricVehicle ev = new ElectricVehicle(nextId++, model, maxRange, battery,
                 connector, fastCharge, consumption, fullCharge);
         repository.register(ev);
@@ -26,6 +59,8 @@ public class VehicleController {
     public void registerHybridVehicle(String model, double maxRange, double battery,
                                       double consumption, int fullCharge, double fuelCapacity,
                                       double fuelConsumption, String fuelType) {
+        validateCommonFields(model, maxRange, battery, consumption, fullCharge);
+        validateHybridFields(fuelCapacity, fuelConsumption, fuelType);
         HybridVehicle hv = new HybridVehicle(nextId++, model, maxRange, battery,
                 consumption, fullCharge, fuelCapacity, fuelConsumption, fuelType);
         repository.register(hv);
@@ -45,7 +80,10 @@ public class VehicleController {
                                   String connector, int fastCharge, double consumption, int fullCharge,
                                   Double fuelCapacity, Double fuelConsumption, String fuelType) throws EntidadeNaoEncontradaException {
         Vehicle v = findById(id);
+        validateCommonFields(model, maxRange, battery, consumption, fullCharge);
+
         if (v instanceof ElectricVehicle) {
+            validateElectricFields(connector, fastCharge);
             ElectricVehicle ev = (ElectricVehicle) v;
             ev.setModel(model);
             ev.setMaximumRange(maxRange);
@@ -56,15 +94,18 @@ public class VehicleController {
             ev.setFullRechargeTime(fullCharge);
             repository.update(ev);
         } else if (v instanceof HybridVehicle) {
+            if (fuelCapacity == null || fuelConsumption == null || fuelType == null)
+                throw new IllegalArgumentException("Dados do híbrido incompletos.");
+            validateHybridFields(fuelCapacity, fuelConsumption, fuelType);
             HybridVehicle hv = (HybridVehicle) v;
             hv.setModel(model);
             hv.setMaximumRange(maxRange);
             hv.setCurrentBatteryCharge(battery);
             hv.setKwhConsumptionPerKm(consumption);
             hv.setFullRechargeTime(fullCharge);
-            if (fuelCapacity != null) hv.setFuelTankCapacity(fuelCapacity);
-            if (fuelConsumption != null) hv.setFuelConsumption(fuelConsumption);
-            if (fuelType != null && !fuelType.isEmpty()) hv.setFuelType(fuelType);
+            hv.setFuelTankCapacity(fuelCapacity);
+            hv.setFuelConsumption(fuelConsumption);
+            hv.setFuelType(fuelType);
             repository.update(hv);
         } else {
             throw new EntidadeNaoEncontradaException("Tipo de veículo inválido.");

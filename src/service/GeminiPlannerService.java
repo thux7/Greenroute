@@ -3,6 +3,7 @@ package service;
 import model.ElectricVehicle;
 import model.HybridVehicle;
 import model.Vehicle;
+import model.City;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import okhttp3.*;
@@ -10,6 +11,8 @@ import okhttp3.*;
 import java.io.IOException;
 import java.text.Normalizer;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GeminiPlannerService implements IAPlannerService {
 
@@ -22,8 +25,7 @@ public class GeminiPlannerService implements IAPlannerService {
 
     @Override
     public Vehicle extractVehicleData(String freeText) throws Exception {
-        String prompt = "Com base no seu conhecimento, forneça as especificações técnicas do veículo \"" + freeText.trim() + "\".\n" +
-                "Responda exatamente no formato abaixo, com 10 campos separados por ponto e vírgula (;):\n" +
+        String prompt = "Extraia os seguintes dados do texto abaixo e responda exatamente no formato CSV com 10 campos separados por ponto e vírgula (;):\n" +
                 "1. MODELO_DO_VEICULO (string)\n" +
                 "2. Tempo de recarga de 0% a 100% em carregador AC (apenas número em minutos)\n" +
                 "3. Tipo do conector (Tipo 2, CCS2 ou CHAdeMO)\n" +
@@ -34,8 +36,9 @@ public class GeminiPlannerService implements IAPlannerService {
                 "8. Capacidade do tanque de combustível em litros (apenas número ou 0 se não possuir)\n" +
                 "9. Autonomia máxima em quilômetros no motor a combustão (apenas número ou 0 se não possuir)\n" +
                 "10. Consumo de combustível em km/l no motor a combustão (apenas número ou 0 se não possuir)\n\n" +
-                "Exemplo de saída: BYD DOLPHYN;420;CCS2;45;30;291;Elétrico;0;0;0\n" +
-                "Não inclua unidades, explicações, quebras de linha ou qualquer texto adicional.";
+                "Se algum dado não for mencionado, use 0 ou vazio (string vazia para modelo).\n" +
+                "Não inclua unidades, explicações, quebras de linha ou qualquer texto adicional.\n\n" +
+                "Texto: \"" + freeText + "\"";
 
         String response = callGemini(prompt);
         String[] parts = response.split(";");
@@ -66,32 +69,8 @@ public class GeminiPlannerService implements IAPlannerService {
         double fuelTank = parseDouble(parts[7]);
         double combustionRange = parseDouble(parts[8]);
         double fuelConsumption = parseDouble(parts[9]);
-
-        System.out.println("=== CAMPOS EXTRAÍDOS PELA IA ===");
-        System.out.println("Modelo: " + model);
-        System.out.println("Tempo AC (min): " + acChargeTime);
-        System.out.println("Conector: " + connector);
-        System.out.println("Capacidade bateria (kWh): " + batteryKwh);
-        System.out.println("Tempo DC rápido (min): " + dcFastCharge);
-        System.out.println("Autonomia elétrica (km): " + electricRange);
-        System.out.println("Tipo combustível: " + fuelType);
-        System.out.println("Tanque (L): " + fuelTank);
-        System.out.println("Autonomia combustão (km): " + combustionRange);
-        System.out.println("Consumo combustão (km/l): " + fuelConsumption);
-        System.out.println("==================================");
-
-        StringBuilder missing = new StringBuilder();
-        if (model.isEmpty()) missing.append("Modelo; ");
-        if (acChargeTime == 0) missing.append("Tempo AC; ");
-        if (connector.isEmpty()) missing.append("Conector; ");
-        if (batteryKwh == 0) missing.append("Capacidade bateria; ");
-        if (dcFastCharge == 0) missing.append("Tempo DC; ");
-        if (electricRange == 0) missing.append("Autonomia elétrica; ");
-        if (fuelType.isEmpty()) missing.append("Tipo combustível; ");
-
-        if (missing.length() > 0) {
-            System.err.println("ATENÇÃO: A IA não conseguiu extrair os seguintes campos: " + missing);
-        }
+        double batteryPercent = extractBatteryPercentage(freeText);
+        if (batteryPercent == 0.0) batteryPercent = 100.0; // fallback
 
         boolean isElectric = isElectricVehicle(fuelType, fuelTank, combustionRange);
         double electricConsumption = (electricRange > 0 && batteryKwh > 0) ? batteryKwh / electricRange : 0.15;
@@ -102,7 +81,7 @@ public class GeminiPlannerService implements IAPlannerService {
                     0,
                     model,
                     electricRange,
-                    100.0,
+                    batteryPercent,
                     connector,
                     dcFastCharge,
                     electricConsumption,
@@ -113,7 +92,7 @@ public class GeminiPlannerService implements IAPlannerService {
                     0,
                     model,
                     electricRange,
-                    100.0,
+                    batteryPercent,
                     electricConsumption,
                     acChargeTime,
                     fuelTank,
@@ -123,11 +102,20 @@ public class GeminiPlannerService implements IAPlannerService {
         }
     }
 
+    private double extractBatteryPercentage(String text) {
+        Pattern p = Pattern.compile("bateria\\s*(?:em|de)?\\s*(\\d+)\\s*%", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(text);
+        if (m.find()) {
+            return Double.parseDouble(m.group(1));
+        }
+        return 0.0;
+    }
+
     private boolean isElectricVehicle(String fuelType, double fuelTank, double combustionRange) {
         String normalized = Normalizer.normalize(fuelType, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .toLowerCase();
-        if (normalized.contains("eletrico")) {
+        if (normalized.contains("eletrico") || normalized.contains("elétrico")) {
             return true;
         }
         if (fuelTank == 0 && combustionRange == 0) {
@@ -137,10 +125,15 @@ public class GeminiPlannerService implements IAPlannerService {
     }
 
     @Override
-    public String planRoute(String vehicleModel, String destination, double currentBattery) {
-        String prompt = "Planeje uma rota para o veículo " + vehicleModel +
-                " com bateria atual de " + currentBattery + "%. Destino: " + destination +
-                ". Considere clima, trânsito e dicas de recarga. Dê uma resposta descritiva em português.";
+    public String planRoute(Vehicle vehicle, City destination) {
+        String prompt = "Planeje uma rota para o veículo " + vehicle.getModel() +
+                " com bateria atual de " + vehicle.getCurrentBatteryCharge() + "%" +
+                ", autonomia máxima de " + vehicle.getMaximumRange() + " km" +
+                ", consumo de " + vehicle.getKwhConsumptionPerKm() + " kWh/km" +
+                ", tempo de recarga completa de " + vehicle.getFullRechargeTime() + " minutos." +
+                " Destino: " + destination.getName() + " a " + destination.getDistanceFromCapital() + " km." +
+                " Considere clima, trânsito e dicas de recarga. Dê uma resposta descritiva em português.";
+
         try {
             return callGemini(prompt);
         } catch (Exception e) {

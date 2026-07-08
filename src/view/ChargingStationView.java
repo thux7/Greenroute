@@ -15,7 +15,7 @@ public class ChargingStationView extends JFrame {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField txtName, txtLocation, txtCityId, txtConnectors, txtPower, txtPrice, txtSlots;
-    private JButton btnSave, btnUpdate, btnDelete, btnRefresh;  // <-- ATRIBUTOS
+    private JButton btnSave, btnUpdate, btnDelete, btnRefresh;
     private int editingId = -1;
 
     public ChargingStationView(ChargingStationController controller, CityController cityController) {
@@ -93,6 +93,13 @@ public class ChargingStationView extends JFrame {
             String name = txtName.getText().trim();
             String location = txtLocation.getText().trim();
             int cityId = Integer.parseInt(txtCityId.getText());
+            try {
+                cityController.findById(cityId);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Cidade não encontrada!", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             String connectors = txtConnectors.getText().trim();
             double power = Double.parseDouble(txtPower.getText());
             double price = Double.parseDouble(txtPrice.getText());

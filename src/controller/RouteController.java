@@ -4,6 +4,7 @@ import model.Vehicle;
 import model.City;
 import model.ChargingStation;
 import exception.AutonomiaInsuficienteException;
+import exception.ConectorIncompativelException;
 import service.IAPlannerService;
 
 import java.util.ArrayList;
@@ -37,24 +38,40 @@ public class RouteController {
         result.append("Destino: ").append(destination.getName())
                 .append(" | Distância: ").append(destination.getDistanceFromCapital()).append(" km\n");
 
-        if (currentRange >= destination.getDistanceFromCapital()) {
-            result.append("Status: Viagem possível!\n");
-        } else {
-            result.append("Status: ATENÇÃO! Autonomia insuficiente.\n");
-            result.append("Estações de recarga sugeridas:\n");
+        if (currentRange < destination.getDistanceFromCapital()) {
             ArrayList<ChargingStation> stations = stationController.findByCity(cityId);
+            String stationList = "";
             if (stations.isEmpty()) {
-                result.append("Nenhuma estação cadastrada nesta cidade.\n");
+                stationList = "Nenhuma estação cadastrada nesta cidade.";
             } else {
+                StringBuilder sb = new StringBuilder();
                 for (ChargingStation s : stations) {
-                    result.append("- ").append(s.getName()).append(" | Local: ").append(s.getLocation())
+                    sb.append("- ").append(s.getName()).append(" | Local: ").append(s.getLocation())
                             .append(" | Conectores: ").append(s.getAvailableConnectorTypes()).append("\n");
                 }
+                stationList = sb.toString();
             }
-            // Usar LLM para roteirização inteligente
-            String roteiro = plannerService.planRoute(vehicle.getModel(), destination.getName(), vehicle.getCurrentBatteryCharge());
-            result.append("\n--- Recomendação da IA ---\n").append(roteiro);
+            throw new AutonomiaInsuficienteException(
+                    "Autonomia insuficiente para chegar ao destino.\n" +
+                            "Estações disponíveis na cidade destino:\n" + stationList
+            );
         }
+
+        if (vehicle instanceof model.ElectricVehicle) {
+            String connector = ((model.ElectricVehicle) vehicle).getConnectorType();
+            ArrayList<ChargingStation> stations = stationController.findByCity(cityId);
+            boolean compatible = stations.stream().anyMatch(s ->
+                    s.getAvailableConnectorTypes().toLowerCase().contains(connector.toLowerCase())
+            );
+            if (!compatible) {
+                throw new ConectorIncompativelException(
+                        "Nenhum eletroposto com conector compatível (" + connector + ") encontrado na cidade destino."
+                );
+            }
+        }
+
+        String roteiro = plannerService.planRoute(vehicle, destination);
+        result.append("\n--- Recomendação da IA ---\n").append(roteiro);
         return result.toString();
     }
 }

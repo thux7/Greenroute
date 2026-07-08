@@ -9,6 +9,8 @@ import controller.CityController;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class RouteView extends JFrame {
     private RouteController routeController;
@@ -44,8 +46,14 @@ public class RouteView extends JFrame {
         add(top, BorderLayout.NORTH);
         add(scroll, BorderLayout.CENTER);
 
-        refreshCombos();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowActivated(WindowEvent e) {
+                refreshCombos();
+            }
+        });
 
+        refreshCombos();
         btnSimular.addActionListener(this::simular);
     }
 
@@ -68,7 +76,8 @@ public class RouteView extends JFrame {
             String resultado = routeController.simulateTrip(vehicleId, cityId);
             txtResult.setText(resultado);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro na rota", JOptionPane.ERROR_MESSAGE);
+            txtResult.setText("Erro: " + ex.getMessage());
         }
     }
 }

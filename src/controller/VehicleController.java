@@ -42,7 +42,8 @@ public class VehicleController {
     }
 
     public void updateVehicleFull(int id, String model, double maxRange, double battery,
-                                  String connector, int fastCharge, double consumption, int fullCharge) throws EntidadeNaoEncontradaException {
+                                  String connector, int fastCharge, double consumption, int fullCharge,
+                                  Double fuelCapacity, Double fuelConsumption, String fuelType) throws EntidadeNaoEncontradaException {
         Vehicle v = findById(id);
         if (v instanceof ElectricVehicle) {
             ElectricVehicle ev = (ElectricVehicle) v;
@@ -54,15 +55,25 @@ public class VehicleController {
             ev.setKwhConsumptionPerKm(consumption);
             ev.setFullRechargeTime(fullCharge);
             repository.update(ev);
+        } else if (v instanceof HybridVehicle) {
+            HybridVehicle hv = (HybridVehicle) v;
+            hv.setModel(model);
+            hv.setMaximumRange(maxRange);
+            hv.setCurrentBatteryCharge(battery);
+            hv.setKwhConsumptionPerKm(consumption);
+            hv.setFullRechargeTime(fullCharge);
+            if (fuelCapacity != null) hv.setFuelTankCapacity(fuelCapacity);
+            if (fuelConsumption != null) hv.setFuelConsumption(fuelConsumption);
+            if (fuelType != null && !fuelType.isEmpty()) hv.setFuelType(fuelType);
+            repository.update(hv);
         } else {
-            throw new EntidadeNaoEncontradaException("Atualização de híbridos ainda não implementada.");
+            throw new EntidadeNaoEncontradaException("Tipo de veículo inválido.");
         }
     }
 
-    public void updateVehicle(int id, String newModel) throws EntidadeNaoEncontradaException {
-        Vehicle v = findById(id);
-        v.setModel(newModel);
-        repository.update(v);
+    public void updateVehicleFull(int id, String model, double maxRange, double battery,
+                                  String connector, int fastCharge, double consumption, int fullCharge) throws EntidadeNaoEncontradaException {
+        updateVehicleFull(id, model, maxRange, battery, connector, fastCharge, consumption, fullCharge, null, null, null);
     }
 
     public void deleteVehicle(int id) throws EntidadeNaoEncontradaException {

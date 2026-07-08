@@ -1,51 +1,32 @@
-package view;
+import controller.*;
+import repository.*;
+import service.GeminiPlannerService;
+import service.IAPlannerService;
+import view.*;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
+public class Main {
+    public static void main(String[] args) {
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                VehicleRepository vehicleRepo = new VehicleRepository();
+                CityRepository cityRepo = new CityRepository();
+                ChargingStationRepository stationRepo = new ChargingStationRepository();
 
-public class MainView extends JFrame {
-    private VehicleView vehicleView;
-    private CityView cityView;
-    private ChargingStationView stationView;
-    private RouteView routeView;
+                VehicleController vehicleController = new VehicleController(vehicleRepo);
+                CityController cityController = new CityController(cityRepo, stationRepo);
+                ChargingStationController stationController = new ChargingStationController(stationRepo, cityController);
 
-    public MainView(VehicleView vehicleView, CityView cityView,
-                    ChargingStationView stationView, RouteView routeView) {
-        this.vehicleView = vehicleView;
-        this.cityView = cityView;
-        this.stationView = stationView;
-        this.routeView = routeView;
+                IAPlannerService planner = new GeminiPlannerService();
 
-        setTitle("GreenRoute - Sistema de Logística");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(500, 400);
-        setLocationRelativeTo(null);
+                RouteController routeController = new RouteController(vehicleController, cityController, stationController, planner);
 
-        JPanel panel = new JPanel(new GridLayout(5, 1, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                VehicleView vehicleView = new VehicleView(vehicleController, planner);
+                CityView cityView = new CityView(cityController, planner);
+                ChargingStationView stationView = new ChargingStationView(stationController, cityController, planner);
+                RouteView routeView = new RouteView(routeController, vehicleController, cityController);
 
-        JButton btnVehicles = new JButton("Gerenciar Veículos");
-        JButton btnCities = new JButton("Gerenciar Cidades");
-        JButton btnStations = new JButton("Gerenciar Estações de Recarga");
-        JButton btnRoute = new JButton("Simular Rota Intermunicipal");
-        JButton btnExit = new JButton("Sair");
-
-        btnVehicles.addActionListener(e -> vehicleView.setVisible(true));
-        btnCities.addActionListener(e -> cityView.setVisible(true));
-        btnStations.addActionListener(e -> stationView.setVisible(true));
-        btnRoute.addActionListener(e -> {
-            routeView.setVisible(true);
+                new MainView(vehicleView, cityView, stationView, routeView);
+            }
         });
-        btnExit.addActionListener(e -> System.exit(0));
-
-        panel.add(btnVehicles);
-        panel.add(btnCities);
-        panel.add(btnStations);
-        panel.add(btnRoute);
-        panel.add(btnExit);
-
-        add(panel);
-        setVisible(true);
     }
 }

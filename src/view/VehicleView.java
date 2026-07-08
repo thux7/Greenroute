@@ -22,7 +22,6 @@ public class VehicleView extends JFrame {
     private JTextArea txtFreeText;
     private JButton btnExtract, btnSave, btnUpdate, btnDelete, btnRefresh;
     private int editingId = -1;
-    private boolean isEditing = false;
 
     public VehicleView(VehicleController controller, IAPlannerService plannerService) {
         this.controller = controller;
@@ -167,7 +166,6 @@ public class VehicleView extends JFrame {
             }
             JOptionPane.showMessageDialog(this, editingId == -1 ? "Veículo cadastrado!" : "Veículo atualizado!");
             editingId = -1;
-            isEditing = false;
             cbType.setEnabled(true);
             btnSave.setText("Salvar");
             refreshTable();
@@ -189,7 +187,6 @@ public class VehicleView extends JFrame {
         try {
             Vehicle v = controller.findById(id);
             editingId = id;
-            isEditing = true;
             cbType.setEnabled(false);
 
             txtModel.setText(v.getModel());
@@ -237,7 +234,6 @@ public class VehicleView extends JFrame {
                 refreshTable();
                 if (editingId == id) {
                     editingId = -1;
-                    isEditing = false;
                     cbType.setEnabled(true);
                     btnSave.setText("Salvar");
                     clearFields();
@@ -254,36 +250,51 @@ public class VehicleView extends JFrame {
             JOptionPane.showMessageDialog(this, "Digite um texto para extrair dados.");
             return;
         }
-        try {
-            Vehicle v = plannerService.extractVehicleData(text);
-            txtModel.setText(v.getModel());
-            txtMaxRange.setText(String.valueOf(v.getMaximumRange()));
-            txtBattery.setText(String.valueOf(v.getCurrentBatteryCharge()));
-            txtConsumption.setText(String.valueOf(v.getKwhConsumptionPerKm()));
-            txtFullCharge.setText(String.valueOf(v.getFullRechargeTime()));
-
-            if (v instanceof ElectricVehicle) {
-                cbType.setSelectedItem("Elétrico");
-                ElectricVehicle ev = (ElectricVehicle) v;
-                txtConnector.setText(ev.getConnectorType());
-                txtFastCharge.setText(String.valueOf(ev.getFastRechargeTime()));
-                txtFuelCapacity.setText("");
-                txtFuelConsumption.setText("");
-                txtFuelType.setText("");
-            } else if (v instanceof HybridVehicle) {
-                cbType.setSelectedItem("Híbrido");
-                HybridVehicle hv = (HybridVehicle) v;
-                txtConnector.setText("");
-                txtFastCharge.setText("0");
-                txtFuelCapacity.setText(String.valueOf(hv.getFuelTankCapacity()));
-                txtFuelConsumption.setText(String.valueOf(hv.getFuelConsumption()));
-                txtFuelType.setText(hv.getFuelType());
+        btnExtract.setEnabled(false);
+        btnExtract.setText("Extraindo...");
+        SwingWorker<Vehicle, Void> worker = new SwingWorker<Vehicle, Void>() {
+            @Override
+            protected Vehicle doInBackground() throws Exception {
+                return plannerService.extractVehicleData(text);
             }
-            toggleFields();
-            JOptionPane.showMessageDialog(this, "Dados extraídos com sucesso! Revise e salve.");
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro na extração: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-        }
+            @Override
+            protected void done() {
+                try {
+                    Vehicle v = get();
+                    txtModel.setText(v.getModel());
+                    txtMaxRange.setText(String.valueOf(v.getMaximumRange()));
+                    txtBattery.setText(String.valueOf(v.getCurrentBatteryCharge()));
+                    txtConsumption.setText(String.valueOf(v.getKwhConsumptionPerKm()));
+                    txtFullCharge.setText(String.valueOf(v.getFullRechargeTime()));
+
+                    if (v instanceof ElectricVehicle) {
+                        cbType.setSelectedItem("Elétrico");
+                        ElectricVehicle ev = (ElectricVehicle) v;
+                        txtConnector.setText(ev.getConnectorType());
+                        txtFastCharge.setText(String.valueOf(ev.getFastRechargeTime()));
+                        txtFuelCapacity.setText("");
+                        txtFuelConsumption.setText("");
+                        txtFuelType.setText("");
+                    } else if (v instanceof HybridVehicle) {
+                        cbType.setSelectedItem("Híbrido");
+                        HybridVehicle hv = (HybridVehicle) v;
+                        txtConnector.setText("");
+                        txtFastCharge.setText("0");
+                        txtFuelCapacity.setText(String.valueOf(hv.getFuelTankCapacity()));
+                        txtFuelConsumption.setText(String.valueOf(hv.getFuelConsumption()));
+                        txtFuelType.setText(hv.getFuelType());
+                    }
+                    toggleFields();
+                    JOptionPane.showMessageDialog(VehicleView.this, "Dados extraídos com sucesso! Revise e salve.");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(VehicleView.this, "Erro na extração: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    btnExtract.setEnabled(true);
+                    btnExtract.setText("Extrair com IA");
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void clearFields() {
@@ -299,7 +310,6 @@ public class VehicleView extends JFrame {
         txtFuelType.setText("");
         txtFreeText.setText("");
         editingId = -1;
-        isEditing = false;
         cbType.setEnabled(true);
         btnSave.setText("Salvar");
         cbType.setSelectedIndex(0);

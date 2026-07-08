@@ -3,6 +3,7 @@ package view;
 import controller.ChargingStationController;
 import controller.CityController;
 import model.ChargingStation;
+import service.IAPlannerService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -12,15 +13,18 @@ import java.awt.event.ActionEvent;
 public class ChargingStationView extends JFrame {
     private ChargingStationController controller;
     private CityController cityController;
+    private IAPlannerService plannerService;
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField txtName, txtLocation, txtCityId, txtConnectors, txtPower, txtPrice, txtSlots;
-    private JButton btnSave, btnUpdate, btnDelete, btnRefresh;
+    private JTextArea txtFreeText;
+    private JButton btnSave, btnUpdate, btnDelete, btnRefresh, btnExtract;
     private int editingId = -1;
 
-    public ChargingStationView(ChargingStationController controller, CityController cityController) {
+    public ChargingStationView(ChargingStationController controller, CityController cityController, IAPlannerService plannerService) {
         this.controller = controller;
         this.cityController = cityController;
+        this.plannerService = plannerService;
         setTitle("Gerenciamento de Estações");
         setSize(800, 500);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -30,28 +34,28 @@ public class ChargingStationView extends JFrame {
         table = new JTable(tableModel);
         JScrollPane scroll = new JScrollPane(table);
 
-        JPanel form = new JPanel(new GridLayout(8, 2, 5, 5));
-        form.add(new JLabel("Nome:"));
-        txtName = new JTextField();
-        form.add(txtName);
-        form.add(new JLabel("Localização:"));
-        txtLocation = new JTextField();
-        form.add(txtLocation);
-        form.add(new JLabel("ID da Cidade:"));
-        txtCityId = new JTextField();
-        form.add(txtCityId);
-        form.add(new JLabel("Conectores (ex: CCS2, Type2):"));
-        txtConnectors = new JTextField();
-        form.add(txtConnectors);
-        form.add(new JLabel("Potência (kW):"));
-        txtPower = new JTextField();
-        form.add(txtPower);
-        form.add(new JLabel("Preço por kWh:"));
-        txtPrice = new JTextField();
-        form.add(txtPrice);
-        form.add(new JLabel("Vagas:"));
-        txtSlots = new JTextField();
-        form.add(txtSlots);
+        JPanel form = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        int row = 0;
+        addLabelAndField(form, "Nome:", txtName = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "Localização:", txtLocation = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "ID da Cidade:", txtCityId = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "Conectores (ex: CCS2, Type2):", txtConnectors = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "Potência (kW):", txtPower = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "Preço por kWh:", txtPrice = new JTextField(15), gbc, row++);
+        addLabelAndField(form, "Vagas:", txtSlots = new JTextField(15), gbc, row++);
+
+        JLabel lblFree = new JLabel("Cadastro Rápido por IA:");
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1;
+        form.add(lblFree, gbc);
+        txtFreeText = new JTextArea(3, 20);
+        JScrollPane freeScroll = new JScrollPane(txtFreeText);
+        gbc.gridx = 1; gbc.gridwidth = 2;
+        form.add(freeScroll, gbc);
+        btnExtract = new JButton("Extrair com IA");
+        gbc.gridx = 3; gbc.gridy = row;
+        form.add(btnExtract, gbc);
 
         btnSave = new JButton("Salvar");
         btnUpdate = new JButton("Atualizar");
@@ -75,9 +79,17 @@ public class ChargingStationView extends JFrame {
         btnUpdate.addActionListener(this::loadForUpdate);
         btnDelete.addActionListener(this::deleteStation);
         btnRefresh.addActionListener(e -> refreshTable());
+        btnExtract.addActionListener(this::extractWithAI);
 
         refreshTable();
         clearFields();
+    }
+
+    private void addLabelAndField(JPanel panel, String label, JTextField field, GridBagConstraints gbc, int row) {
+        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1;
+        panel.add(new JLabel(label), gbc);
+        gbc.gridx = 1; gbc.gridwidth = 2;
+        panel.add(field, gbc);
     }
 
     private void refreshTable() {
@@ -93,13 +105,7 @@ public class ChargingStationView extends JFrame {
             String name = txtName.getText().trim();
             String location = txtLocation.getText().trim();
             int cityId = Integer.parseInt(txtCityId.getText());
-            try {
-                cityController.findById(cityId);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Cidade não encontrada!", "Erro", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
+            // Validação de cidade já é feita pelo controller
             String connectors = txtConnectors.getText().trim();
             double power = Double.parseDouble(txtPower.getText());
             double price = Double.parseDouble(txtPrice.getText());
@@ -176,7 +182,44 @@ public class ChargingStationView extends JFrame {
         txtPower.setText("");
         txtPrice.setText("");
         txtSlots.setText("");
+        txtFreeText.setText("");
         editingId = -1;
         btnSave.setText("Salvar");
+    }
+
+    private void extractWithAI(ActionEvent e) {
+        String text = txtFreeText.getText().trim();
+        if (text.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Digite um texto para extrair dados.");
+            return;
+        }
+        btnExtract.setEnabled(false);
+        btnExtract.setText("Extraindo...");
+        SwingWorker<ChargingStation, Void> worker = new SwingWorker<ChargingStation, Void>() {
+            @Override
+            protected ChargingStation doInBackground() throws Exception {
+                return plannerService.extractStationData(text);
+            }
+            @Override
+            protected void done() {
+                try {
+                    ChargingStation cs = get();
+                    txtName.setText(cs.getName());
+                    txtLocation.setText(cs.getLocation());
+                    txtConnectors.setText(cs.getAvailableConnectorTypes());
+                    txtPower.setText(String.valueOf(cs.getChargingPowerKw()));
+                    txtPrice.setText(String.valueOf(cs.getPricePerKwh()));
+                    txtSlots.setText(String.valueOf(cs.getAvailableSlots()));
+                    txtCityId.setText("");
+                    JOptionPane.showMessageDialog(ChargingStationView.this, "Dados extraídos! Preencha o ID da cidade manualmente.");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(ChargingStationView.this, "Erro na extração: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    btnExtract.setEnabled(true);
+                    btnExtract.setText("Extrair com IA");
+                }
+            }
+        };
+        worker.execute();
     }
 }

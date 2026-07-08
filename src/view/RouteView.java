@@ -1,5 +1,7 @@
 package view;
 
+import model.Vehicle;
+import model.City;
 import controller.RouteController;
 import controller.VehicleController;
 import controller.CityController;

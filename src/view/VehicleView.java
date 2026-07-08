@@ -3,6 +3,7 @@ package view;
 import controller.VehicleController;
 import model.Vehicle;
 import model.ElectricVehicle;
+import model.HybridVehicle;
 import service.IAPlannerService;
 
 import javax.swing.*;
@@ -19,6 +20,7 @@ public class VehicleView extends JFrame {
     private JTextField txtModel, txtMaxRange, txtBattery, txtConnector, txtFastCharge, txtConsumption, txtFullCharge;
     private JTextArea txtFreeText;
     private JButton btnExtract, btnSave, btnUpdate, btnDelete, btnRefresh;
+    private int editingId = -1;
 
     public VehicleView(VehicleController controller, IAPlannerService plannerService) {
         this.controller = controller;
@@ -29,12 +31,10 @@ public class VehicleView extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Tabela
         tableModel = new DefaultTableModel(new String[]{"ID", "Modelo", "Tipo", "Bateria %", "Autonomia (km)"}, 0);
         table = new JTable(tableModel);
         JScrollPane scroll = new JScrollPane(table);
 
-        // Painel de formulário
         JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5,5,5,5);
@@ -48,7 +48,6 @@ public class VehicleView extends JFrame {
         addLabelAndField(formPanel, "Consumo (kWh/km):", txtConsumption = new JTextField(15), gbc, row++);
         addLabelAndField(formPanel, "Tempo recarga completa (min):", txtFullCharge = new JTextField(15), gbc, row++);
 
-        // Área de texto livre para LLM
         JLabel lblFree = new JLabel("Cadastro Rápido por IA:");
         gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 1;
         formPanel.add(lblFree, gbc);
@@ -60,7 +59,6 @@ public class VehicleView extends JFrame {
         gbc.gridx = 2; gbc.gridy = row;
         formPanel.add(btnExtract, gbc);
 
-        // Botões
         JPanel btnPanel = new JPanel(new FlowLayout());
         btnSave = new JButton("Salvar");
         btnUpdate = new JButton("Atualizar");
@@ -72,7 +70,6 @@ public class VehicleView extends JFrame {
         btnPanel.add(btnDelete);
         btnPanel.add(btnRefresh);
 
-        // Layout principal
         setLayout(new BorderLayout());
         add(scroll, BorderLayout.CENTER);
         JPanel rightPanel = new JPanel(new BorderLayout());
@@ -80,14 +77,14 @@ public class VehicleView extends JFrame {
         rightPanel.add(btnPanel, BorderLayout.SOUTH);
         add(rightPanel, BorderLayout.EAST);
 
-        // Eventos
-        btnSave.addActionListener(this::saveVehicle);
-        btnUpdate.addActionListener(this::updateVehicle);
+        btnSave.addActionListener(this::saveOrUpdateVehicle);
+        btnUpdate.addActionListener(this::loadForUpdate);
         btnDelete.addActionListener(this::deleteVehicle);
         btnRefresh.addActionListener(e -> refreshTable());
         btnExtract.addActionListener(this::extractWithAI);
 
         refreshTable();
+        clearFields();
     }
 
     private void addLabelAndField(JPanel panel, String label, JTextField field, GridBagConstraints gbc, int row) {
@@ -99,8 +96,7 @@ public class VehicleView extends JFrame {
 
     private void refreshTable() {
         tableModel.setRowCount(0);
-        List<Vehicle> vehicles = controller.listAll();
-        for (Vehicle v : vehicles) {
+        for (Vehicle v : controller.listAll()) {
             String tipo = (v instanceof ElectricVehicle) ? "Elétrico" : "Híbrido";
             tableModel.addRow(new Object[]{
                     v.getId(),
@@ -112,57 +108,88 @@ public class VehicleView extends JFrame {
         }
     }
 
-    private void saveVehicle(ActionEvent e) {
+    private void saveOrUpdateVehicle(ActionEvent e) {
         try {
-            String model = txtModel.getText();
+            String model = txtModel.getText().trim();
+            if (model.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Modelo é obrigatório.");
+                return;
+            }
             double maxRange = Double.parseDouble(txtMaxRange.getText());
             double battery = Double.parseDouble(txtBattery.getText());
-            String connector = txtConnector.getText();
+            String connector = txtConnector.getText().trim();
             int fastCharge = Integer.parseInt(txtFastCharge.getText());
             double consumption = Double.parseDouble(txtConsumption.getText());
             int fullCharge = Integer.parseInt(txtFullCharge.getText());
 
-            controller.registerElectricVehicle(model, maxRange, battery, connector, fastCharge, consumption, fullCharge);
-            JOptionPane.showMessageDialog(this, "Veículo salvo com sucesso!");
+            if (editingId == -1) {
+                controller.registerElectricVehicle(model, maxRange, battery, connector, fastCharge, consumption, fullCharge);
+                JOptionPane.showMessageDialog(this, "Veículo cadastrado com sucesso!");
+            } else {
+                controller.updateVehicleFull(editingId, model, maxRange, battery, connector, fastCharge, consumption, fullCharge);
+                JOptionPane.showMessageDialog(this, "Veículo atualizado com sucesso!");
+                editingId = -1; // reseta modo
+                btnSave.setText("Salvar"); // opcional
+            }
             refreshTable();
             clearFields();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Erro: Verifique os campos numéricos.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void updateVehicle(ActionEvent e) {
-        int selected = table.getSelectedRow();
-        if (selected == -1) {
+    private void loadForUpdate(ActionEvent e) {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Selecione um veículo para atualizar.");
             return;
         }
-        int id = (int) tableModel.getValueAt(selected, 0);
-        String novoModelo = JOptionPane.showInputDialog(this, "Novo modelo:", tableModel.getValueAt(selected, 1));
-        if (novoModelo != null && !novoModelo.trim().isEmpty()) {
-            try {
-                controller.updateVehicle(id, novoModelo.trim());
-                JOptionPane.showMessageDialog(this, "Veículo atualizado!");
-                refreshTable();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        int id = (int) tableModel.getValueAt(selectedRow, 0);
+        try {
+            Vehicle v = controller.findById(id);
+            editingId = id;
+            txtModel.setText(v.getModel());
+            txtMaxRange.setText(String.valueOf(v.getMaximumRange()));
+            txtBattery.setText(String.valueOf(v.getCurrentBatteryCharge()));
+            if (v instanceof ElectricVehicle) {
+                ElectricVehicle ev = (ElectricVehicle) v;
+                txtConnector.setText(ev.getConnectorType());
+                txtFastCharge.setText(String.valueOf(ev.getFastRechargeTime()));
+                txtConsumption.setText(String.valueOf(ev.getKwhConsumptionPerKm()));
+                txtFullCharge.setText(String.valueOf(ev.getFullRechargeTime()));
+            } else {
+                txtConnector.setText("");
+                txtFastCharge.setText("0");
+                txtConsumption.setText("0");
+                txtFullCharge.setText("0");
+                JOptionPane.showMessageDialog(this, "Veículo híbrido: campos elétricos não preenchidos.");
             }
+            btnSave.setText("Atualizar");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void deleteVehicle(ActionEvent e) {
-        int selected = table.getSelectedRow();
-        if (selected == -1) {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
             JOptionPane.showMessageDialog(this, "Selecione um veículo para excluir.");
             return;
         }
-        int id = (int) tableModel.getValueAt(selected, 0);
+        int id = (int) tableModel.getValueAt(selectedRow, 0);
         int confirm = JOptionPane.showConfirmDialog(this, "Tem certeza?", "Confirmar", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 controller.deleteVehicle(id);
                 JOptionPane.showMessageDialog(this, "Veículo excluído!");
                 refreshTable();
+                if (editingId == id) {
+                    editingId = -1;
+                    btnSave.setText("Salvar");
+                    clearFields();
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
@@ -176,15 +203,27 @@ public class VehicleView extends JFrame {
             return;
         }
         try {
-            ElectricVehicle ev = plannerService.extractVehicleData(text);
-            txtModel.setText(ev.getModel());
-            txtMaxRange.setText(String.valueOf(ev.getMaximumRange()));
-            txtBattery.setText(String.valueOf(ev.getCurrentBatteryCharge()));
-            txtConnector.setText(ev.getConnectorType());
-            txtFastCharge.setText(String.valueOf(ev.getFastRechargeTime()));
-            txtConsumption.setText(String.valueOf(ev.getKwhConsumptionPerKm()));
-            txtFullCharge.setText(String.valueOf(ev.getFullRechargeTime()));
-            JOptionPane.showMessageDialog(this, "Dados extraídos com sucesso! Revise e salve.");
+            Vehicle v = plannerService.extractVehicleData(text);
+            if (v instanceof ElectricVehicle) {
+                ElectricVehicle ev = (ElectricVehicle) v;
+                txtModel.setText(ev.getModel());
+                txtMaxRange.setText(String.valueOf(ev.getMaximumRange()));
+                txtBattery.setText(String.valueOf(ev.getCurrentBatteryCharge()));
+                txtConnector.setText(ev.getConnectorType());
+                txtFastCharge.setText(String.valueOf(ev.getFastRechargeTime()));
+                txtConsumption.setText(String.valueOf(ev.getKwhConsumptionPerKm()));
+                txtFullCharge.setText(String.valueOf(ev.getFullRechargeTime()));
+                JOptionPane.showMessageDialog(this, "Dados extraídos com sucesso! Revise e salve.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Veículo híbrido detectado. Apenas dados comuns preenchidos.");
+                txtModel.setText(v.getModel());
+                txtMaxRange.setText(String.valueOf(v.getMaximumRange()));
+                txtBattery.setText(String.valueOf(v.getCurrentBatteryCharge()));
+                txtConnector.setText("");
+                txtFastCharge.setText("0");
+                txtConsumption.setText("0");
+                txtFullCharge.setText("0");
+            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Erro na extração: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
@@ -199,5 +238,7 @@ public class VehicleView extends JFrame {
         txtConsumption.setText("");
         txtFullCharge.setText("");
         txtFreeText.setText("");
+        editingId = -1;
+        btnSave.setText("Salvar");
     }
 }

@@ -7,13 +7,14 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.util.List;
 
 public class CityView extends JFrame {
     private CityController controller;
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField txtName, txtState, txtDistance;
+    private JButton btnSave, btnUpdate, btnDelete, btnRefresh;  // <-- ATRIBUTOS
+    private int editingId = -1;
 
     public CityView(CityController controller) {
         this.controller = controller;
@@ -37,10 +38,10 @@ public class CityView extends JFrame {
         txtDistance = new JTextField();
         form.add(txtDistance);
 
-        JButton btnSave = new JButton("Salvar");
-        JButton btnUpdate = new JButton("Atualizar");
-        JButton btnDelete = new JButton("Excluir");
-        JButton btnRefresh = new JButton("Atualizar Lista");
+        btnSave = new JButton("Salvar");
+        btnUpdate = new JButton("Atualizar");
+        btnDelete = new JButton("Excluir");
+        btnRefresh = new JButton("Atualizar Lista");
 
         JPanel btnPanel = new JPanel(new FlowLayout());
         btnPanel.add(btnSave);
@@ -55,12 +56,13 @@ public class CityView extends JFrame {
         right.add(btnPanel, BorderLayout.SOUTH);
         add(right, BorderLayout.EAST);
 
-        btnSave.addActionListener(this::save);
-        btnUpdate.addActionListener(this::update);
-        btnDelete.addActionListener(this::delete);
+        btnSave.addActionListener(this::saveOrUpdate);
+        btnUpdate.addActionListener(this::loadForUpdate);
+        btnDelete.addActionListener(this::deleteCity);
         btnRefresh.addActionListener(e -> refreshTable());
 
         refreshTable();
+        clearFields();
     }
 
     private void refreshTable() {
@@ -70,46 +72,72 @@ public class CityView extends JFrame {
         }
     }
 
-    private void save(ActionEvent e) {
+    private void saveOrUpdate(ActionEvent e) {
         try {
-            controller.registerCity(txtName.getText(), txtState.getText(),
-                    Double.parseDouble(txtDistance.getText()));
-            JOptionPane.showMessageDialog(this, "Cidade salva!");
+            String name = txtName.getText().trim();
+            String state = txtState.getText().trim();
+            double distance = Double.parseDouble(txtDistance.getText());
+            if (editingId == -1) {
+                controller.registerCity(name, state, distance);
+                JOptionPane.showMessageDialog(this, "Cidade cadastrada!");
+            } else {
+                controller.updateCityFull(editingId, name, state, distance);
+                JOptionPane.showMessageDialog(this, "Cidade atualizada!");
+                editingId = -1;
+                btnSave.setText("Salvar");
+            }
             refreshTable();
-            txtName.setText("");
-            txtState.setText("");
-            txtDistance.setText("");
+            clearFields();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Distância inválida.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void update(ActionEvent e) {
+    private void loadForUpdate(ActionEvent e) {
         int row = table.getSelectedRow();
-        if (row == -1) return;
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Selecione uma cidade.");
+            return;
+        }
         int id = (int) tableModel.getValueAt(row, 0);
-        String novo = JOptionPane.showInputDialog(this, "Novo nome:", tableModel.getValueAt(row, 1));
-        if (novo != null && !novo.trim().isEmpty()) {
-            try {
-                controller.updateCity(id, novo.trim());
-                refreshTable();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
-            }
+        try {
+            City c = controller.findById(id);
+            editingId = id;
+            txtName.setText(c.getName());
+            txtState.setText(c.getState());
+            txtDistance.setText(String.valueOf(c.getDistanceFromCapital()));
+            btnSave.setText("Atualizar");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void delete(ActionEvent e) {
+    private void deleteCity(ActionEvent e) {
         int row = table.getSelectedRow();
         if (row == -1) return;
         int id = (int) tableModel.getValueAt(row, 0);
         if (JOptionPane.showConfirmDialog(this, "Excluir?") == JOptionPane.YES_OPTION) {
             try {
                 controller.deleteCity(id);
+                if (editingId == id) {
+                    editingId = -1;
+                    btnSave.setText("Salvar");
+                    clearFields();
+                }
                 refreshTable();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private void clearFields() {
+        txtName.setText("");
+        txtState.setText("");
+        txtDistance.setText("");
+        editingId = -1;
+        btnSave.setText("Salvar");
     }
 }

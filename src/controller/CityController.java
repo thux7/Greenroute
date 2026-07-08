@@ -29,6 +29,14 @@ public class CityController {
         return c;
     }
 
+    public void updateCityFull(int id, String name, String state, double distance) throws EntidadeNaoEncontradaException {
+        City c = findById(id);
+        c.setName(name);
+        c.setState(state);
+        c.setDistanceFromCapital(distance);
+        repository.update(c);
+    }
+
     public void updateCity(int id, String newName) throws EntidadeNaoEncontradaException {
         City c = findById(id);
         c.setName(newName);

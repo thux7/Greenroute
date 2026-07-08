@@ -1,8 +1,8 @@
 package service;
 
-import model.ElectricVehicle;
+import model.Vehicle;
 
 public interface IAPlannerService {
-    ElectricVehicle extractVehicleData(String freeText) throws Exception;
+    Vehicle extractVehicleData(String freeText) throws Exception;
     String planRoute(String vehicleModel, String destination, double currentBattery);
 }

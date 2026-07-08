@@ -31,6 +31,19 @@ public class ChargingStationController {
         return cs;
     }
 
+    public void updateStationFull(int id, String name, String location, int cityId,
+                                  String connectors, double power, double price, int slots) throws EntidadeNaoEncontradaException {
+        ChargingStation cs = findById(id);
+        cs.setName(name);
+        cs.setLocation(location);
+        cs.setCityId(cityId);
+        cs.setAvailableConnectorTypes(connectors);
+        cs.setChargingPowerKw(power);
+        cs.setPricePerKwh(price);
+        cs.setAvailableSlots(slots);
+        repository.update(cs);
+    }
+
     public void updateStation(int id, String newName) throws EntidadeNaoEncontradaException {
         ChargingStation cs = findById(id);
         cs.setName(newName);

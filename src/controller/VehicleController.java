@@ -41,6 +41,24 @@ public class VehicleController {
         return v;
     }
 
+    public void updateVehicleFull(int id, String model, double maxRange, double battery,
+                                  String connector, int fastCharge, double consumption, int fullCharge) throws EntidadeNaoEncontradaException {
+        Vehicle v = findById(id);
+        if (v instanceof ElectricVehicle) {
+            ElectricVehicle ev = (ElectricVehicle) v;
+            ev.setModel(model);
+            ev.setMaximumRange(maxRange);
+            ev.setCurrentBatteryCharge(battery);
+            ev.setConnectorType(connector);
+            ev.setFastRechargeTime(fastCharge);
+            ev.setKwhConsumptionPerKm(consumption);
+            ev.setFullRechargeTime(fullCharge);
+            repository.update(ev);
+        } else {
+            throw new EntidadeNaoEncontradaException("Atualização de híbridos ainda não implementada.");
+        }
+    }
+
     public void updateVehicle(int id, String newModel) throws EntidadeNaoEncontradaException {
         Vehicle v = findById(id);
         v.setModel(newModel);

@@ -38,40 +38,45 @@ public class RouteController {
         result.append("Destino: ").append(destination.getName())
                 .append(" | Distância: ").append(destination.getDistanceFromCapital()).append(" km\n");
 
-        if (currentRange < destination.getDistanceFromCapital()) {
-            ArrayList<ChargingStation> stations = stationController.findByCity(cityId);
-            String stationList = "";
-            if (stations.isEmpty()) {
-                stationList = "Nenhuma estação cadastrada nesta cidade.";
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (ChargingStation s : stations) {
-                    sb.append("- ").append(s.getName()).append(" | Local: ").append(s.getLocation())
-                            .append(" | Conectores: ").append(s.getAvailableConnectorTypes()).append("\n");
-                }
-                stationList = sb.toString();
-            }
-            throw new AutonomiaInsuficienteException(
-                    "Autonomia insuficiente para chegar ao destino.\n" +
-                            "Estações disponíveis na cidade destino:\n" + stationList
+        if (currentRange >= destination.getDistanceFromCapital()) {
+            String roteiro = plannerService.planRoute(vehicle, destination);
+            result.append("\n--- Recomendação da IA ---\n").append(roteiro);
+            return result.toString();
+        }
+
+        ArrayList<ChargingStation> stations = stationController.findByCity(cityId);
+        if (stations.isEmpty()) {
+            throw new ConectorIncompativelException(
+                    "Autonomia insuficiente e não há eletropostos cadastrados na cidade destino."
             );
         }
 
         if (vehicle instanceof model.ElectricVehicle) {
             String connector = ((model.ElectricVehicle) vehicle).getConnectorType();
-            ArrayList<ChargingStation> stations = stationController.findByCity(cityId);
-            boolean compatible = stations.stream().anyMatch(s ->
-                    s.getAvailableConnectorTypes().toLowerCase().contains(connector.toLowerCase())
-            );
-            if (!compatible) {
+            ArrayList<ChargingStation> compatibleStations = new ArrayList<>();
+            for (ChargingStation s : stations) {
+                if (s.getAvailableConnectorTypes().toLowerCase().contains(connector.toLowerCase())) {
+                    compatibleStations.add(s);
+                }
+            }
+            if (compatibleStations.isEmpty()) {
                 throw new ConectorIncompativelException(
-                        "Nenhum eletroposto com conector compatível (" + connector + ") encontrado na cidade destino."
+                        "Autonomia insuficiente e nenhum posto com conector " + connector +
+                                " disponível na cidade destino."
                 );
             }
+            stations = compatibleStations;
         }
 
-        String roteiro = plannerService.planRoute(vehicle, destination);
-        result.append("\n--- Recomendação da IA ---\n").append(roteiro);
-        return result.toString();
+        StringBuilder stationList = new StringBuilder();
+        for (ChargingStation s : stations) {
+            stationList.append("- ").append(s.getName())
+                    .append(" | Local: ").append(s.getLocation())
+                    .append(" | Conectores: ").append(s.getAvailableConnectorTypes()).append("\n");
+        }
+        throw new AutonomiaInsuficienteException(
+                "Autonomia insuficiente para chegar ao destino.\n" +
+                        "Estações disponíveis na cidade destino (com conector compatível):\n" + stationList
+        );
     }
 }

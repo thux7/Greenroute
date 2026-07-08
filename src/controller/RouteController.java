@@ -3,6 +3,7 @@ package controller;
 import model.Vehicle;
 import model.City;
 import model.ChargingStation;
+import model.ElectricVehicle;
 import model.HybridVehicle;
 import exception.AutonomiaInsuficienteException;
 import exception.ConectorIncompativelException;
@@ -60,8 +61,14 @@ public class RouteController {
             );
         }
 
-        if (vehicle instanceof model.ElectricVehicle) {
-            String connector = ((model.ElectricVehicle) vehicle).getConnectorType();
+        String connector = null;
+        if (vehicle instanceof ElectricVehicle) {
+            connector = ((ElectricVehicle) vehicle).getConnectorType();
+        } else if (vehicle instanceof HybridVehicle) {
+            connector = ((HybridVehicle) vehicle).getConnectorType();
+        }
+
+        if (connector != null) {
             ArrayList<ChargingStation> compatibleStations = new ArrayList<>();
             for (ChargingStation s : stations) {
                 if (s.getAvailableConnectorTypes().toLowerCase().contains(connector.toLowerCase())) {

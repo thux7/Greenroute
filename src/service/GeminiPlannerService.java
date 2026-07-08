@@ -12,8 +12,6 @@ import okhttp3.*;
 import java.io.IOException;
 import java.text.Normalizer;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class GeminiPlannerService implements IAPlannerService {
 
@@ -80,12 +78,17 @@ public class GeminiPlannerService implements IAPlannerService {
 
     private String[] parseCsvResponse(String response, int expected) throws IOException {
         String cleaned = response.replaceAll("```[a-zA-Z]*\\s*", "").replaceAll("```", "").trim();
-        Pattern pattern = Pattern.compile("([^;]+(?:;[^;]+){" + (expected - 1) + "})");
-        Matcher matcher = pattern.matcher(cleaned);
-        if (matcher.find()) {
-            cleaned = matcher.group(1).trim();
-        }
         String[] parts = cleaned.split(";");
+        if (parts.length < expected) {
+            String[] lines = cleaned.split("\n");
+            for (String line : lines) {
+                String[] candidate = line.trim().split(";");
+                if (candidate.length == expected) {
+                    parts = candidate;
+                    break;
+                }
+            }
+        }
         if (parts.length != expected) {
             throw new IOException("Resposta inválida (esperado " + expected + " campos): " + response);
         }
@@ -164,7 +167,9 @@ public class GeminiPlannerService implements IAPlannerService {
                     acChargeTime > 0 ? acChargeTime : 60,
                     fuelTank > 0 ? fuelTank : 40.0,
                     fuelConsumption > 0 ? fuelConsumption : 12.0,
-                    fuelType.isEmpty() ? "Gasolina" : fuelType
+                    fuelType.isEmpty() ? "Gasolina" : fuelType,
+                    connector.isEmpty() ? "CCS2" : connector,
+                    dcFastCharge > 0 ? dcFastCharge : 30
             );
         }
     }

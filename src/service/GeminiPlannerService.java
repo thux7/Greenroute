@@ -23,6 +23,14 @@ public class GeminiPlannerService implements IAPlannerService {
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
 
+    private double clamp(double value, double min, double max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    private int clampInt(int value, int min, int max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
     @Override
     public Vehicle extractVehicleData(String freeText) throws Exception {
         String prompt = "Extraia os seguintes dados do texto abaixo e responda exatamente no formato CSV com 10 campos separados por ponto e vírgula (;):\n" +
@@ -70,13 +78,13 @@ public class GeminiPlannerService implements IAPlannerService {
         double combustionRange = parseDouble(parts[8]);
         double fuelConsumption = parseDouble(parts[9]);
 
-        if (batteryKwh < 0) batteryKwh = 0;
-        if (electricRange < 0) electricRange = 0;
-        if (fuelTank < 0) fuelTank = 0;
-        if (combustionRange < 0) combustionRange = 0;
-        if (fuelConsumption < 0) fuelConsumption = 0;
-        if (acChargeTime < 0) acChargeTime = 0;
-        if (dcFastCharge < 0) dcFastCharge = 0;
+        batteryKwh = clamp(batteryKwh, 0, 200);
+        electricRange = clamp(electricRange, 0, 1000);
+        fuelTank = clamp(fuelTank, 0, 200);
+        combustionRange = clamp(combustionRange, 0, 2000);
+        fuelConsumption = clamp(fuelConsumption, 0, 50);
+        acChargeTime = clampInt(acChargeTime, 0, 600);
+        dcFastCharge = clampInt(dcFastCharge, 0, 120);
 
         double batteryPercent = extractBatteryPercentage(freeText);
         if (batteryPercent <= 0 || batteryPercent > 100) batteryPercent = 100.0; // fallback
@@ -117,7 +125,7 @@ public class GeminiPlannerService implements IAPlannerService {
         Matcher m = p.matcher(text);
         if (m.find()) {
             double val = Double.parseDouble(m.group(1));
-            return Math.min(100, Math.max(0, val)); // Garante entre 0 e 100
+            return clamp(val, 0, 100);
         }
         return 0.0;
     }

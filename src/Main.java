@@ -12,7 +12,7 @@ public class Main {
 
         VehicleController vehicleController = new VehicleController(vehicleRepo);
         CityController cityController = new CityController(cityRepo);
-        ChargingStationController stationController = new ChargingStationController(stationRepo);
+        ChargingStationController stationController = new ChargingStationController(stationRepo, cityController);
 
         IAPlannerService planner = new GeminiPlannerService();
 

@@ -10,8 +10,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 public class VehicleView extends JFrame {
     private VehicleController controller;
@@ -24,6 +22,7 @@ public class VehicleView extends JFrame {
     private JTextArea txtFreeText;
     private JButton btnExtract, btnSave, btnUpdate, btnDelete, btnRefresh;
     private int editingId = -1;
+    private boolean isEditing = false;
 
     public VehicleView(VehicleController controller, IAPlannerService plannerService) {
         this.controller = controller;
@@ -155,7 +154,7 @@ public class VehicleView extends JFrame {
                 } else {
                     controller.updateVehicleFull(editingId, model, maxRange, battery, connector, fastCharge, consumption, fullCharge);
                 }
-            } else { // Híbrido
+            } else {
                 double fuelCapacity = Double.parseDouble(txtFuelCapacity.getText());
                 double fuelConsumption = Double.parseDouble(txtFuelConsumption.getText());
                 String fuelType = txtFuelType.getText().trim();
@@ -168,6 +167,8 @@ public class VehicleView extends JFrame {
             }
             JOptionPane.showMessageDialog(this, editingId == -1 ? "Veículo cadastrado!" : "Veículo atualizado!");
             editingId = -1;
+            isEditing = false;
+            cbType.setEnabled(true);
             btnSave.setText("Salvar");
             refreshTable();
             clearFields();
@@ -188,6 +189,9 @@ public class VehicleView extends JFrame {
         try {
             Vehicle v = controller.findById(id);
             editingId = id;
+            isEditing = true;
+            cbType.setEnabled(false);
+
             txtModel.setText(v.getModel());
             txtMaxRange.setText(String.valueOf(v.getMaximumRange()));
             txtBattery.setText(String.valueOf(v.getCurrentBatteryCharge()));
@@ -233,6 +237,8 @@ public class VehicleView extends JFrame {
                 refreshTable();
                 if (editingId == id) {
                     editingId = -1;
+                    isEditing = false;
+                    cbType.setEnabled(true);
                     btnSave.setText("Salvar");
                     clearFields();
                 }
@@ -293,6 +299,8 @@ public class VehicleView extends JFrame {
         txtFuelType.setText("");
         txtFreeText.setText("");
         editingId = -1;
+        isEditing = false;
+        cbType.setEnabled(true);
         btnSave.setText("Salvar");
         cbType.setSelectedIndex(0);
         toggleFields();

@@ -3,6 +3,7 @@ package controller;
 import model.Vehicle;
 import model.City;
 import model.ChargingStation;
+import model.HybridVehicle;
 import exception.AutonomiaInsuficienteException;
 import exception.ConectorIncompativelException;
 import service.IAPlannerService;
@@ -29,7 +30,15 @@ public class RouteController {
         Vehicle vehicle = vehicleController.findById(vehicleId);
         City destination = cityController.findById(cityId);
 
-        double currentRange = vehicle.getMaximumRange() * (vehicle.getCurrentBatteryCharge() / 100.0);
+        double currentRange;
+        if (vehicle instanceof HybridVehicle) {
+            HybridVehicle hv = (HybridVehicle) vehicle;
+            double electricRange = hv.getMaximumRange() * (hv.getCurrentBatteryCharge() / 100.0);
+            double combustionRange = hv.getFuelTankCapacity() * hv.getFuelConsumption();
+            currentRange = electricRange + combustionRange;
+        } else {
+            currentRange = vehicle.getMaximumRange() * (vehicle.getCurrentBatteryCharge() / 100.0);
+        }
 
         StringBuilder result = new StringBuilder();
         result.append("--- Resumo da Simulação ---\n");
